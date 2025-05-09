@@ -28,6 +28,13 @@ To configure the maximum width of your own message bubbles, please edit the `USE
 
 ---
 
+**GitHub**
+
+[Gemini-Better-UI](https://github.com/Jonathan881005/Gemini-Better-UI/)
+If you enjoy using this script, a GitHub star would be greatly appreciated to help me find a job.
+
+---
+
 **License**
 
 Released under the [MIT License](https://opensource.org/license/MIT).
