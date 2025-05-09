@@ -1,21 +1,23 @@
 // ==UserScript==
 // @name         Gemini-Better-UI (Gemini 介面優化)
 // @namespace    http://tampermonkey.net/
-// @version      1.0.0
-// @description  Enhances Gemini UI: Adjustable chat width, 5-state canvas layout toggle
-// @description:zh-TW 增強 Gemini 介面：可調式聊天容器寬度、五段式畫布佈局切換
+// @version      1.0.2
+// @description  Enhances Gemini UI: Adjustable chat width, 5-state Canvas layout toggle
+// @description:zh-TW 增強 Gemini 介面：可調式聊天容器寬度、五段式 Canvas 佈局切換
 // @author       JonathanLU
 // @match        *://gemini.google.com/*
 // @grant        GM_addStyle
 // @run-at       document-idle
 // @license      MIT
+// @downloadURL https://update.greasyfork.org/scripts/535508/Gemini-Better-UI%20%28Gemini%20%E4%BB%8B%E9%9D%A2%E5%84%AA%E5%8C%96%29.user.js
+// @updateURL https://update.greasyfork.org/scripts/535508/Gemini-Better-UI%20%28Gemini%20%E4%BB%8B%E9%9D%A2%E5%84%AA%E5%8C%96%29.meta.js
 // ==/UserScript==
 
 (function() {
     'use strict';
 
     // --- Script Information ---
-    const SCRIPT_NAME = 'Gemini Better UI v1.0'; // Version updated
+    const SCRIPT_NAME = 'Gemini Better UI v1.0.2'; // Version updated
     console.log(`${SCRIPT_NAME}: Script started.`);
 
     // --- User Configurable Constants ---
@@ -26,7 +28,7 @@
     // --- Constants ---
     const STORAGE_KEY_CONV_WIDTH = 'geminiConversationContainerWidth';
     const CSS_VAR_CONV_WIDTH = '--conversation-container-dynamic-width';
-    const DEFAULT_CONV_WIDTH_PERCENTAGE = 80;
+    const DEFAULT_CONV_WIDTH_PERCENTAGE = 90;
     const MIN_CONV_WIDTH_PERCENTAGE = 50;
     const MAX_CONV_WIDTH_PERCENTAGE = 100;
     const STEP_CONV_WIDTH_PERCENTAGE = 10;
@@ -51,10 +53,16 @@
     const CHAT_WINDOW_GRID_TARGET_SELECTOR = '#app-root > main > side-navigation-v2 > bard-sidenav-container > bard-sidenav-content > div.content-wrapper > div > div.content-container > chat-window';
     const IMMERSIVE_PANEL_SELECTOR = CHAT_WINDOW_GRID_TARGET_SELECTOR + ' > immersive-panel';
 
+    // --- Constants ---
+    // ... (其他常數) ...
+
     const GRID_LAYOUT_STATES = [
         "minmax(360px, 1fr) minmax(0px, 2fr)", "minmax(360px, 2fr) minmax(0px, 3fr)",
         "1fr 1fr", "minmax(0px, 3fr) minmax(360px, 2fr)", "minmax(0px, 2fr) minmax(360px, 1fr)"
     ];
+
+
+    // ... (腳本其他部分) ...
     let currentGridLayoutIndex = 0;
 
     let prevLayoutButtonElement = null;
@@ -284,7 +292,7 @@
         prevLayoutButtonElement.id = GRID_LAYOUT_PREV_ID;
         prevLayoutButtonElement.classList.add('gm-conv-width-control-button');
         prevLayoutButtonElement.textContent = '|<-';
-        prevLayoutButtonElement.title = '上一個畫布佈局';
+        prevLayoutButtonElement.title = 'Prev Canvas Layout / 上個 Canvas 佈局';
         prevLayoutButtonElement.addEventListener('click', () => {
             const immersivePanel = document.querySelector(IMMERSIVE_PANEL_SELECTOR);
             if (!immersivePanel || window.getComputedStyle(immersivePanel).display === 'none') {
@@ -298,7 +306,7 @@
         nextLayoutButtonElement.id = GRID_LAYOUT_NEXT_ID;
         nextLayoutButtonElement.classList.add('gm-conv-width-control-button');
         nextLayoutButtonElement.textContent = '->|';
-        nextLayoutButtonElement.title = '下一個畫布佈局';
+        nextLayoutButtonElement.title = 'Next Layout / 下個 Canvas 佈局';
         nextLayoutButtonElement.addEventListener('click', () => {
             const immersivePanel = document.querySelector(IMMERSIVE_PANEL_SELECTOR);
             if (!immersivePanel || window.getComputedStyle(immersivePanel).display === 'none') {
@@ -312,14 +320,14 @@
         decreaseConvWidthButton.id = BUTTON_DECREASE_ID;
         decreaseConvWidthButton.classList.add('gm-conv-width-control-button');
         decreaseConvWidthButton.textContent = '-';
-        decreaseConvWidthButton.title = `減少對話容器寬度 (${STEP_CONV_WIDTH_PERCENTAGE}%)`;
+        decreaseConvWidthButton.title = `Width - / 寬度 -`;
         decreaseConvWidthButton.addEventListener('click', () => updateConversationContainerWidth(currentConvWidthPercentage - STEP_CONV_WIDTH_PERCENTAGE, true));
 
         const increaseConvWidthButton = document.createElement('button');
         increaseConvWidthButton.id = BUTTON_INCREASE_ID;
         increaseConvWidthButton.classList.add('gm-conv-width-control-button');
         increaseConvWidthButton.textContent = '+';
-        increaseConvWidthButton.title = `增加對話容器寬度 (${STEP_CONV_WIDTH_PERCENTAGE}%)`;
+        increaseConvWidthButton.title = `Width + / 寬度 +`;
         increaseConvWidthButton.addEventListener('click', () => updateConversationContainerWidth(currentConvWidthPercentage + STEP_CONV_WIDTH_PERCENTAGE, true));
 
         buttonRow.appendChild(prevLayoutButtonElement);
