@@ -1,12 +1,12 @@
 // ==UserScript==
 // @name         Gemini-Better-UI (Gemini 介面優化)
 // @namespace    http://tampermonkey.net/
-// @version      1.0.2
+// @version      1.0.3
 // @description  Enhances Gemini UI: Adjustable chat width, 5-state Canvas layout toggle
 // @description:zh-TW 增強 Gemini 介面：可調式聊天容器寬度、五段式 Canvas 佈局切換
 // @author       JonathanLU
 // @match        *://gemini.google.com/*
-// @grant        GM_addStyle
+// @icon         https://raw.githubusercontent.com/Jonathan881005/Gemini-Better-UI/refs/heads/main/Google-gemini-icon.svg
 // @run-at       document-idle
 // @license      MIT
 // @downloadURL https://update.greasyfork.org/scripts/535508/Gemini-Better-UI%20%28Gemini%20%E4%BB%8B%E9%9D%A2%E5%84%AA%E5%8C%96%29.user.js
@@ -17,13 +17,8 @@
     'use strict';
 
     // --- Script Information ---
-    const SCRIPT_NAME = 'Gemini Better UI v1.0.2'; // Version updated
+    const SCRIPT_NAME = 'Gemini Better UI v1.0.3';
     console.log(`${SCRIPT_NAME}: Script started.`);
-
-    // --- User Configurable Constants ---
-    // Modify this value to set the maximum width of their own message bubbles.
-    // 修改此值以設定使用者對話框最大寬度
-    const USER_BUBBLE_MAX_WIDTH_PX = 800; // Default: 800px
 
     // --- Constants ---
     const STORAGE_KEY_CONV_WIDTH = 'geminiConversationContainerWidth';
@@ -35,13 +30,10 @@
 
     const BUTTON_INCREASE_ID = 'gm-conv-width-increase';
     const BUTTON_DECREASE_ID = 'gm-conv-width-decrease';
-    const DISPLAY_ID = 'gm-conv-width-display';
     const BUTTON_UI_CONTAINER_ID = 'gm-conv-width-ui-container';
     const BUTTON_ROW_CLASS = 'gm-conv-width-button-row';
     const GRID_LAYOUT_PREV_ID = 'gm-grid-layout-prev';
     const GRID_LAYOUT_NEXT_ID = 'gm-grid-layout-next';
-    const NOPE_ALERT_ID = 'gm-nope-alert';
-    const LIMIT_ALERT_ID = 'gm-limit-alert';
 
     const STABLE_CHAT_ROOT_SELECTOR = 'chat-window-content > div.chat-history-scroll-container';
     const UNSTABLE_ID_CHAT_ROOT_SELECTOR = 'div#chat-history';
@@ -53,32 +45,33 @@
     const CHAT_WINDOW_GRID_TARGET_SELECTOR = '#app-root > main > side-navigation-v2 > bard-sidenav-container > bard-sidenav-content > div.content-wrapper > div > div.content-container > chat-window';
     const IMMERSIVE_PANEL_SELECTOR = CHAT_WINDOW_GRID_TARGET_SELECTOR + ' > immersive-panel';
 
-    // --- Constants ---
-    // ... (其他常數) ...
 
     const GRID_LAYOUT_STATES = [
         "minmax(360px, 1fr) minmax(0px, 2fr)", "minmax(360px, 2fr) minmax(0px, 3fr)",
         "1fr 1fr", "minmax(0px, 3fr) minmax(360px, 2fr)", "minmax(0px, 2fr) minmax(360px, 1fr)"
     ];
 
-
-    // ... (腳本其他部分) ...
     let currentGridLayoutIndex = 0;
+    let prevLayoutButtonElement = null; // Canvas 上一個佈局按鈕
+    let nextLayoutButtonElement = null; // Canvas 下一個佈局按鈕
+    let decreaseConvWidthButtonElement = null; // 寬度減少按鈕
+    let increaseConvWidthButtonElement = null; // 寬度增加按鈕
 
-    let prevLayoutButtonElement = null;
-    let nextLayoutButtonElement = null;
-    // Alert elements are now created dynamically, no need for global references to them.
-    let nopeTimeoutId = null;
-    let limitTimeoutId = null;
     let canvasObserver = null;
-    // convWidthDisplayElement will also be created dynamically by showDynamicTemporaryAlert
     let currentConvWidthPercentage = DEFAULT_CONV_WIDTH_PERCENTAGE;
 
     const buttonWidth = 28; // px
     const buttonMargin = 4; // px
-    const nopeAlertHorizontalShift = -31; // px
-    const displayWidthHorizontalShift = 32; // px
 
+    // --- 新增：計算提示訊息的水平偏移量 ---
+    // 按鈕列總寬度 = 4 * buttonWidth + 3 * buttonMargin
+    // 按鈕列中心 = (4 * buttonWidth + 3 * buttonMargin) / 2 = 2 * buttonWidth + 1.5 * buttonMargin
+    // 佈局按鈕中心點 (<- 和 -> 之間) = buttonWidth + buttonMargin / 2
+    // 寬度按鈕中心點 (- 和 + 之間) = (buttonWidth + buttonMargin + buttonWidth) + buttonMargin + (buttonWidth + buttonMargin / 2) = 3 * buttonWidth + 2.5 * buttonMargin
+    // 佈局提示偏移量 = 佈局按鈕中心點 - 按鈕列中心 = (buttonWidth + buttonMargin / 2) - (2 * buttonWidth + 1.5 * buttonMargin) = -buttonWidth - buttonMargin
+    // 寬度提示偏移量 = 寬度按鈕中心點 - 按鈕列中心 = (3 * buttonWidth + 2.5 * buttonMargin) - (2 * buttonWidth + 1.5 * buttonMargin) = buttonWidth + buttonMargin
+    const LAYOUT_ALERT_HORIZONTAL_SHIFT = -buttonWidth - buttonMargin; // px, 佈局提示 (1/5) 和 "Nope!" 的水平偏移
+    const WIDTH_ALERT_HORIZONTAL_SHIFT = buttonWidth + buttonMargin;   // px, 寬度提示 (50%) 和 "Min/Max" 的水平偏移
 
     // --- CSS Rule Generation Function ---
     function getCssRules(initialConvWidthPercentage) {
@@ -92,24 +85,24 @@
                 z-index: 200001 !important; display: flex !important; flex-direction: column-reverse !important;
                 align-items: center !important;
             }
-            /* Common style for temporary alerts (Display, Nope, Limit) */
             .gm-temp-alert {
                 padding: 3px 7px !important;
                 font-size: 11px !important; font-weight: 500; border-radius: 3px !important;
                 width: fit-content !important;
                 text-align: center; box-shadow: 0 1px 2px rgba(0,0,0,0.25);
-                display: block; opacity: 0; /* Initially invisible but block for layout */
+                display: block; opacity: 0;
                 transition: opacity 0.15s ease-out, transform 0.15s cubic-bezier(0.25, 0.85, 0.45, 1.45);
                 position: absolute;
                 bottom: ${buttonRowHeight + promptGap}px;
-                left: 50%;
+                left: 50%; /* 相對於父容器中心 */
                 z-index: 200002 !important;
                 white-space: nowrap;
+                /* transform 在 showDynamicTemporaryAlert 中設定 */
             }
-            .gm-alert-display { /* Style for width percentage display */
+            .gm-alert-display {
                 background-color: #303134 !important; color: #cacecf !important;
             }
-            .gm-alert-nope, .gm-alert-limit { /* Style for Nope and Min/Max alerts */
+            .gm-alert-nope, .gm-alert-limit {
                 background-color: #e53935 !important; color: white !important;
                 font-size: 10px !important; font-weight: bold;
                 padding: 3px 6px !important; border-radius: 4px !important;
@@ -160,7 +153,11 @@
             ${STABLE_CHAT_ROOT_SELECTOR} .conversation-container ${USER_QUERY_OUTER_SELECTOR} > span.user-query-container.right-align-content,
             ${UNSTABLE_ID_CHAT_ROOT_SELECTOR} .conversation-container ${USER_QUERY_OUTER_SELECTOR} > span.user-query-container.right-align-content,
             ${STABLE_CHAT_ROOT_SELECTOR} .conversation-container ${MODEL_RESPONSE_OUTER_SELECTOR} > div:first-child {
-                width: auto !important; max-width: 90% !important; margin: 0 !important; box-sizing: border-box !important;
+                max-width: 90% !important;
+                margin: 0 !important;
+                box-sizing: border-box !important;
+                display: flex !important;
+                justify-content: flex-end !important;
             }
             ${STABLE_CHAT_ROOT_SELECTOR} .conversation-container ${USER_QUERY_OUTER_SELECTOR} ${USER_QUERY_TEXT_DIV_SELECTOR},
             ${UNSTABLE_ID_CHAT_ROOT_SELECTOR} .conversation-container ${USER_QUERY_OUTER_SELECTOR} ${USER_QUERY_TEXT_DIV_SELECTOR} {
@@ -175,30 +172,85 @@
             ${UNSTABLE_ID_CHAT_ROOT_SELECTOR} .conversation-container ${USER_QUERY_OUTER_SELECTOR} ${USER_QUERY_BUBBLE_SPAN_SELECTOR},
             ${STABLE_CHAT_ROOT_SELECTOR} .conversation-container ${MODEL_RESPONSE_OUTER_SELECTOR} ${MODEL_RESPONSE_MAIN_PANEL_SELECTOR},
             ${UNSTABLE_ID_CHAT_ROOT_SELECTOR} .conversation-container ${MODEL_RESPONSE_OUTER_SELECTOR} ${MODEL_RESPONSE_MAIN_PANEL_SELECTOR} {
-                padding: 8px 12px !important; min-height: 1.5em !important;
-                box-sizing: border-box !important; width: 100% !important;
-                display: inline-block !important; word-break: break-word !important;
+                padding: 8px 12px !important;
+                min-height: 1.5em !important;
+                box-sizing: border-box !important;
+                word-break: break-word !important;
+                max-width: calc(1024px - var(--gem-sys-spacing--m)*2) !important;
             }
             ${STABLE_CHAT_ROOT_SELECTOR} .conversation-container ${USER_QUERY_OUTER_SELECTOR} user-query-content,
-            ${STABLE_CHAT_ROOT_SELECTOR} .conversation-container ${USER_QUERY_OUTER_SELECTOR} user-query-content > div.user-query-bubble-container,
+            ${STABLE_CHAT_ROOT_SELECTOR} .conversation-container ${USER_QUERY_OUTER_SELECTOR} user-query-content > div.user-query-bubble-container {
+                width: 100% !important;
+                box-sizing: border-box !important;
+                margin: 0 !important;
+            }
             ${STABLE_CHAT_ROOT_SELECTOR} .conversation-container ${MODEL_RESPONSE_OUTER_SELECTOR} > div:first-child response-container,
             ${STABLE_CHAT_ROOT_SELECTOR} .conversation-container ${MODEL_RESPONSE_OUTER_SELECTOR} > div:first-child .presented-response-container,
             ${STABLE_CHAT_ROOT_SELECTOR} .conversation-container ${MODEL_RESPONSE_OUTER_SELECTOR} > div:first-child .response-container-content {
                 width: 100% !important; box-sizing: border-box !important; margin: 0 !important; padding: 0 !important;
             }
         `;
-        // MODIFIED: Use the USER_BUBBLE_MAX_WIDTH_PX constant
+
+        const uqOuter = `${STABLE_CHAT_ROOT_SELECTOR} .conversation-container ${USER_QUERY_OUTER_SELECTOR}`;
+        const actualBubbleDivEditMode = `> span.user-query-container.right-align-content > user-query-content.user-query-container.edit-mode > div.user-query-container.user-query-bubble-container.edit-mode`;
+        const queryContentWrapperInBubbleEditMode = `${actualBubbleDivEditMode} > div.query-content.edit-mode`;
+        const matFormFieldInEditMode = `${queryContentWrapperInBubbleEditMode} > div.edit-container > mat-form-field.edit-form`;
+        const textareaElementInEditMode = `${matFormFieldInEditMode} textarea.mat-mdc-input-element.cdk-textarea-autosize`;
+
         css += `
-            ${STABLE_CHAT_ROOT_SELECTOR} .conversation-container ${USER_QUERY_OUTER_SELECTOR} ${USER_QUERY_BUBBLE_SPAN_SELECTOR},
-            ${UNSTABLE_ID_CHAT_ROOT_SELECTOR} .conversation-container ${USER_QUERY_OUTER_SELECTOR} ${USER_QUERY_BUBBLE_SPAN_SELECTOR} {
-                box-sizing: content-box !important;
-                max-width: ${USER_BUBBLE_MAX_WIDTH_PX}px !important;
+            ${uqOuter} ${actualBubbleDivEditMode} {
+                max-width: calc(1024px - var(--gem-sys-spacing--m)*2) !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                display: flex !important;
+                flex-direction: column !important;
+            }
+            ${uqOuter} ${queryContentWrapperInBubbleEditMode} {
+                width: 90% !important;
+                margin-left: auto !important;
+                margin-right: 0 !important;
+                box-sizing: border-box !important;
+            }
+            ${uqOuter} ${matFormFieldInEditMode} {
+                width: 100% !important;
+                box-sizing: border-box !important;
+                display: flex !important;
+                flex-direction: column !important;
+            }
+            ${uqOuter} ${matFormFieldInEditMode} .mat-mdc-text-field-wrapper,
+            ${uqOuter} ${matFormFieldInEditMode} .mat-mdc-form-field-flex,
+            ${uqOuter} ${matFormFieldInEditMode} .mat-mdc-form-field-infix {
+                width: 100% !important;
+                max-height: 540px;
+                box-sizing: border-box !important;
+                flex-grow: 1 !important;
+            }
+            ${uqOuter} ${textareaElementInEditMode} {
             }
         `;
         return css;
     }
 
+    // --- Update Button Titles ---
+    function updateButtonTitles() {
+        if (prevLayoutButtonElement) {
+            prevLayoutButtonElement.title = `Prev Canvas Layout / 上個 Canvas 佈局 (${currentGridLayoutIndex + 1}/${GRID_LAYOUT_STATES.length})`;
+        }
+        if (nextLayoutButtonElement) {
+            nextLayoutButtonElement.title = `Next Layout / 下個 Canvas 佈局 (${currentGridLayoutIndex + 1}/${GRID_LAYOUT_STATES.length})`;
+        }
+        if (decreaseConvWidthButtonElement) {
+            decreaseConvWidthButtonElement.title = `Width - / 寬度 - (${currentConvWidthPercentage}%)`;
+        }
+        if (increaseConvWidthButtonElement) {
+            increaseConvWidthButtonElement.title = `Width + / 寬度 + (${currentConvWidthPercentage}%)`;
+        }
+    }
+
     // --- Dynamic Temporary Alert Function ---
+    // 修改：接收 horizontalShift 參數
     function showDynamicTemporaryAlert(text, alertTypeClass, horizontalShift) {
         const uiContainer = document.getElementById(BUTTON_UI_CONTAINER_ID);
         if (!uiContainer) return;
@@ -206,21 +258,23 @@
         const alertElement = document.createElement('div');
         alertElement.classList.add('gm-temp-alert', alertTypeClass);
         alertElement.textContent = text;
+        // 使用傳入的 horizontalShift 來設定 transform
         alertElement.style.transform = `translateX(calc(-50% + ${horizontalShift}px)) translateY(5px)`;
 
         uiContainer.appendChild(alertElement);
 
         requestAnimationFrame(() => {
             alertElement.style.opacity = (alertTypeClass === 'gm-alert-nope' || alertTypeClass === 'gm-alert-limit') ? '0.7' : '0.8';
+            // 使用傳入的 horizontalShift 來設定 transform
             alertElement.style.transform = `translateX(calc(-50% + ${horizontalShift}px)) translateY(-10px)`;
         });
 
         const visibleDuration = (alertTypeClass === 'gm-alert-display') ? 350 : 250;
         const fadeOutAnimationDuration = 150;
 
-        // Store timer IDs on the element itself to manage them
         alertElement.primaryTimeoutId = setTimeout(() => {
             alertElement.style.opacity = '0';
+            // 使用傳入的 horizontalShift 來設定 transform
             alertElement.style.transform = `translateX(calc(-50% + ${horizontalShift}px)) translateY(-25px)`;
             alertElement.secondaryTimeoutId = setTimeout(() => {
                 if (alertElement.parentNode) {
@@ -230,15 +284,16 @@
         }, visibleDuration);
     }
 
-    // --- Update Layout Button States ---
+    // --- Update Layout Button States (Also updates titles) ---
     function updateLayoutButtonStates() {
         const immersivePanel = document.querySelector(IMMERSIVE_PANEL_SELECTOR);
         const canvasIsVisible = immersivePanel && window.getComputedStyle(immersivePanel).display !== 'none';
         if (prevLayoutButtonElement) prevLayoutButtonElement.disabled = canvasIsVisible && (currentGridLayoutIndex === 0);
         if (nextLayoutButtonElement) nextLayoutButtonElement.disabled = canvasIsVisible && (currentGridLayoutIndex === GRID_LAYOUT_STATES.length - 1);
+        updateButtonTitles(); // 更新按鈕標題
     }
 
-    // --- Apply Grid Layout ---
+    // --- Apply Grid Layout (Also updates titles and shows alert) ---
     function applyGridLayout(newIndex) {
         currentGridLayoutIndex = newIndex;
         const chatWindow = document.querySelector(CHAT_WINDOW_GRID_TARGET_SELECTOR);
@@ -251,10 +306,12 @@
                 immersivePanelElement.style.setProperty('display', 'block', 'important');
             }
         }
-        updateLayoutButtonStates();
+        updateLayoutButtonStates(); // 這會調用 updateButtonTitles
+        // 修改：使用 LAYOUT_ALERT_HORIZONTAL_SHIFT
+        showDynamicTemporaryAlert(`(${currentGridLayoutIndex + 1}/${GRID_LAYOUT_STATES.length})`, 'gm-alert-display', LAYOUT_ALERT_HORIZONTAL_SHIFT); // 顯示佈局狀態提示
     }
 
-    // --- Update Conversation Container Width ---
+    // --- Update Conversation Container Width (Also updates titles) ---
     function updateConversationContainerWidth(newPercentage, fromButton = true) {
         const oldPercentage = currentConvWidthPercentage;
         const intendedPercentage = newPercentage;
@@ -262,24 +319,31 @@
 
         if (fromButton) {
             if (intendedPercentage < MIN_CONV_WIDTH_PERCENTAGE && oldPercentage === MIN_CONV_WIDTH_PERCENTAGE) {
-                showDynamicTemporaryAlert("Min!", 'gm-alert-limit', displayWidthHorizontalShift); return;
+                // 修改：使用 WIDTH_ALERT_HORIZONTAL_SHIFT
+                showDynamicTemporaryAlert("Min!", 'gm-alert-limit', WIDTH_ALERT_HORIZONTAL_SHIFT); return;
             }
             if (intendedPercentage > MAX_CONV_WIDTH_PERCENTAGE && oldPercentage === MAX_CONV_WIDTH_PERCENTAGE) {
-                showDynamicTemporaryAlert("Max!", 'gm-alert-limit', displayWidthHorizontalShift); return;
+                // 修改：使用 WIDTH_ALERT_HORIZONTAL_SHIFT
+                showDynamicTemporaryAlert("Max!", 'gm-alert-limit', WIDTH_ALERT_HORIZONTAL_SHIFT); return;
             }
         }
         currentConvWidthPercentage = clampedPercentage;
         document.documentElement.style.setProperty(CSS_VAR_CONV_WIDTH, currentConvWidthPercentage + '%');
         localStorage.setItem(STORAGE_KEY_CONV_WIDTH, currentConvWidthPercentage);
         if (fromButton) {
-            showDynamicTemporaryAlert(`${currentConvWidthPercentage}%`, 'gm-alert-display', displayWidthHorizontalShift);
+            // 修改：使用 WIDTH_ALERT_HORIZONTAL_SHIFT
+            showDynamicTemporaryAlert(`${currentConvWidthPercentage}%`, 'gm-alert-display', WIDTH_ALERT_HORIZONTAL_SHIFT);
         }
+        updateButtonTitles(); // 更新按鈕標題
         console.log(`${SCRIPT_NAME}: Conversation width set to ${currentConvWidthPercentage}%.`);
     }
 
-    // --- Create Control Buttons ---
+    // --- Create Control Buttons (Sets initial titles) ---
     function createControlButtons() {
-        if (document.getElementById(BUTTON_UI_CONTAINER_ID)) return;
+        if (document.getElementById(BUTTON_UI_CONTAINER_ID)) { // 如果按鈕已存在，先更新標題然後返回
+            updateButtonTitles();
+            return;
+        }
         const uiContainer = document.getElementById(BUTTON_UI_CONTAINER_ID) || document.createElement('div');
         if (!uiContainer.id) {
             uiContainer.id = BUTTON_UI_CONTAINER_ID;
@@ -288,60 +352,63 @@
         const buttonRow = document.createElement('div');
         buttonRow.classList.add(BUTTON_ROW_CLASS);
 
-        prevLayoutButtonElement = document.createElement('button');
+        prevLayoutButtonElement = document.createElement('button'); // 賦值給全域變數
         prevLayoutButtonElement.id = GRID_LAYOUT_PREV_ID;
         prevLayoutButtonElement.classList.add('gm-conv-width-control-button');
         prevLayoutButtonElement.textContent = '|<-';
-        prevLayoutButtonElement.title = 'Prev Canvas Layout / 上個 Canvas 佈局';
+        // 初始 title 在 initialize 中通過 updateButtonTitles 設定
+
         prevLayoutButtonElement.addEventListener('click', () => {
             const immersivePanel = document.querySelector(IMMERSIVE_PANEL_SELECTOR);
             if (!immersivePanel || window.getComputedStyle(immersivePanel).display === 'none') {
-                showDynamicTemporaryAlert("Nope!", 'gm-alert-nope', nopeAlertHorizontalShift); return;
+                // 修改：使用 LAYOUT_ALERT_HORIZONTAL_SHIFT
+                showDynamicTemporaryAlert("Nope!", 'gm-alert-nope', LAYOUT_ALERT_HORIZONTAL_SHIFT); return;
             }
             if (currentGridLayoutIndex > 0) applyGridLayout(currentGridLayoutIndex - 1);
-            else updateLayoutButtonStates();
+            else updateLayoutButtonStates(); // 即使不改變索引，也更新狀態（例如禁用狀態和標題）
         });
 
-        nextLayoutButtonElement = document.createElement('button');
+        nextLayoutButtonElement = document.createElement('button'); // 賦值給全域變數
         nextLayoutButtonElement.id = GRID_LAYOUT_NEXT_ID;
         nextLayoutButtonElement.classList.add('gm-conv-width-control-button');
         nextLayoutButtonElement.textContent = '->|';
-        nextLayoutButtonElement.title = 'Next Layout / 下個 Canvas 佈局';
+        // 初始 title 在 initialize 中通過 updateButtonTitles 設定
+
         nextLayoutButtonElement.addEventListener('click', () => {
             const immersivePanel = document.querySelector(IMMERSIVE_PANEL_SELECTOR);
             if (!immersivePanel || window.getComputedStyle(immersivePanel).display === 'none') {
-                showDynamicTemporaryAlert("Nope!", 'gm-alert-nope', nopeAlertHorizontalShift); return;
+                // 修改：使用 LAYOUT_ALERT_HORIZONTAL_SHIFT
+                showDynamicTemporaryAlert("Nope!", 'gm-alert-nope', LAYOUT_ALERT_HORIZONTAL_SHIFT); return;
             }
             if (currentGridLayoutIndex < GRID_LAYOUT_STATES.length - 1) applyGridLayout(currentGridLayoutIndex + 1);
-            else updateLayoutButtonStates();
+            else updateLayoutButtonStates(); // 即使不改變索引，也更新狀態
         });
 
-        const decreaseConvWidthButton = document.createElement('button');
-        decreaseConvWidthButton.id = BUTTON_DECREASE_ID;
-        decreaseConvWidthButton.classList.add('gm-conv-width-control-button');
-        decreaseConvWidthButton.textContent = '-';
-        decreaseConvWidthButton.title = `Width - / 寬度 -`;
-        decreaseConvWidthButton.addEventListener('click', () => updateConversationContainerWidth(currentConvWidthPercentage - STEP_CONV_WIDTH_PERCENTAGE, true));
+        decreaseConvWidthButtonElement = document.createElement('button'); // 賦值給全域變數
+        decreaseConvWidthButtonElement.id = BUTTON_DECREASE_ID;
+        decreaseConvWidthButtonElement.classList.add('gm-conv-width-control-button');
+        decreaseConvWidthButtonElement.textContent = '-';
+        // 初始 title 在 initialize 中通過 updateButtonTitles 設定
+        decreaseConvWidthButtonElement.addEventListener('click', () => updateConversationContainerWidth(currentConvWidthPercentage - STEP_CONV_WIDTH_PERCENTAGE, true));
 
-        const increaseConvWidthButton = document.createElement('button');
-        increaseConvWidthButton.id = BUTTON_INCREASE_ID;
-        increaseConvWidthButton.classList.add('gm-conv-width-control-button');
-        increaseConvWidthButton.textContent = '+';
-        increaseConvWidthButton.title = `Width + / 寬度 +`;
-        increaseConvWidthButton.addEventListener('click', () => updateConversationContainerWidth(currentConvWidthPercentage + STEP_CONV_WIDTH_PERCENTAGE, true));
+        increaseConvWidthButtonElement = document.createElement('button'); // 賦值給全域變數
+        increaseConvWidthButtonElement.id = BUTTON_INCREASE_ID;
+        increaseConvWidthButtonElement.classList.add('gm-conv-width-control-button');
+        increaseConvWidthButtonElement.textContent = '+';
+        // 初始 title 在 initialize 中通過 updateButtonTitles 設定
+        increaseConvWidthButtonElement.addEventListener('click', () => updateConversationContainerWidth(currentConvWidthPercentage + STEP_CONV_WIDTH_PERCENTAGE, true));
 
         buttonRow.appendChild(prevLayoutButtonElement);
         buttonRow.appendChild(nextLayoutButtonElement);
-        buttonRow.appendChild(decreaseConvWidthButton);
-        buttonRow.appendChild(increaseConvWidthButton);
+        buttonRow.appendChild(decreaseConvWidthButtonElement);
+        buttonRow.appendChild(increaseConvWidthButtonElement);
 
         uiContainer.appendChild(buttonRow);
-        // Dynamic alerts are appended directly to uiContainer by showDynamicTemporaryAlert
 
         if (!document.getElementById(BUTTON_UI_CONTAINER_ID) && document.body) {
             document.body.appendChild(uiContainer);
         }
-        updateLayoutButtonStates();
+        updateLayoutButtonStates(); // 設定初始的禁用狀態和標題
     }
 
    // --- Canvas Visibility Observer ---
@@ -351,13 +418,16 @@
             console.warn(`${SCRIPT_NAME}: Chat window for observer not found.`);
             updateLayoutButtonStates(); return;
         }
-        const observerCallback = () => updateLayoutButtonStates();
+        const observerCallback = () => {
+            // 當 Canvas 可見性變化時，不僅更新按鈕禁用狀態，也更新標題
+            updateLayoutButtonStates();
+        };
         if (canvasObserver) canvasObserver.disconnect();
         canvasObserver = new MutationObserver(observerCallback);
         canvasObserver.observe(chatWindowElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
 
         console.log(`${SCRIPT_NAME}: Canvas observer set up.`);
-        updateLayoutButtonStates();
+        updateLayoutButtonStates(); // 初始檢查並設定狀態和標題
     }
 
     // --- Initialization ---
@@ -367,7 +437,9 @@
         if (isNaN(currentConvWidthPercentage) || currentConvWidthPercentage < MIN_CONV_WIDTH_PERCENTAGE || currentConvWidthPercentage > MAX_CONV_WIDTH_PERCENTAGE) {
             currentConvWidthPercentage = DEFAULT_CONV_WIDTH_PERCENTAGE;
         }
-        updateConversationContainerWidth(currentConvWidthPercentage, false);
+        // 先不觸發 alert 更新寬度，在 createControlButtons 後通過 updateButtonTitles 更新標題
+        document.documentElement.style.setProperty(CSS_VAR_CONV_WIDTH, currentConvWidthPercentage + '%');
+
 
         const chatWindow = document.querySelector(CHAT_WINDOW_GRID_TARGET_SELECTOR);
         if (chatWindow) {
@@ -378,15 +450,23 @@
                 currentGridLayoutIndex = (idx !== -1) ? idx : 0;
             } catch (e) { currentGridLayoutIndex = 0; }
         } else { currentGridLayoutIndex = 0; }
-        console.log(`${SCRIPT_NAME}: Initial grid index: ${currentGridLayoutIndex}`);
+        console.log(`${SCRIPT_NAME}: Initial grid index: ${currentGridLayoutIndex + 1}/${GRID_LAYOUT_STATES.length}`);
+        console.log(`${SCRIPT_NAME}: Initial conversation width: ${currentConvWidthPercentage}%.`);
+
 
         const cssToInject = getCssRules(currentConvWidthPercentage);
-        try { GM_addStyle(cssToInject); console.log(`${SCRIPT_NAME}: Styles injected.`); }
+        try {
+            const style = document.createElement('style');
+            style.textContent = cssToInject;
+            document.head.appendChild(style);
+            console.log(`${SCRIPT_NAME}: Styles injected.`);
+        }
         catch (e) { console.error(`${SCRIPT_NAME}: Error injecting styles:`, e); }
 
         const setupUI = () => {
-            createControlButtons();
-            setupCanvasObserver();
+            createControlButtons(); // 創建按鈕，此時按鈕的 title 尚未完全更新
+            setupCanvasObserver(); // 設定觀察器，它會調用 updateLayoutButtonStates -> updateButtonTitles
+            updateButtonTitles(); // 確保在所有東西都緒後，明確更新一次所有按鈕的初始 title
             console.log(`${SCRIPT_NAME}: UI setup complete.`);
         };
 
