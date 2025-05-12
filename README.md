@@ -1,6 +1,6 @@
 ## Gemini-Better-UI (Gemini 介面優化)
 
-Enhances Gemini interface, adjustable chat width, a 5-state canvas layout toggle.
+Enhances Gemini interface, adjustable chat width, a 5-state Canvas layout toggle.
 增強 Gemini 介面，可調整的 Chat 寬度和 Canvas Layout 切換。
 
 ---
@@ -12,7 +12,7 @@ Enhances Gemini interface, adjustable chat width, a 5-state canvas layout toggle
   
 
 - **5-State Canvas Layout Toggle**  
-  Switch between five predefined layouts for the chat and canvas panels.  
+  Switch between five predefined layouts for the chat and Canvas panels.  
   **在五種 Canvas 佈局之間切換**
 
 
@@ -23,10 +23,10 @@ Enhances Gemini interface, adjustable chat width, a 5-state canvas layout toggle
 Control buttons are located at the bottom right corner of the page:
 控制按鈕位於頁面的右下角：
 
-- `|<-` : Previous canvas layout (only active when canvas is visible)  
+- `|<-` : Previous Canvas layout (only active when Canvas panel is visible)  
   切換到上一個 Canvas 佈局（僅 Canvas 可見時有效）
 
-- `->|` : Next canvas layout (only active when canvas is visible)  
+- `->|` : Next Canvas layout (only active when Canvas panel is visible)  
   切換到下一個 Canvas 佈局（僅 Canvas 可見時有效）
 
 - `-` : Decrease chat width  
@@ -34,15 +34,6 @@ Control buttons are located at the bottom right corner of the page:
 
 - `+` : Increase chat width  
   增加 Chat 寬度
-
----
-
-## Advanced / 進階設定
-
-To change the **maximum width of your own message bubbles**,  
-edit the `USER_BUBBLE_MAX_WIDTH_PX` constant at the top of the script.
-
-若要設定個人訊息泡泡的最大寬度，可修改腳本開頭的 `USER_BUBBLE_MAX_WIDTH_PX` 常數。
 
 ---
 
@@ -60,4 +51,4 @@ Released under the [MIT License](https://opensource.org/license/MIT).
 
 **Support**
 
-[Buy Me a Coffee](https://ko-fi.com/jonathanlu1005)  
+[Buy Me a Coffee](https://ko-fi.com/jonathanlu1005)
