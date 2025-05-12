@@ -1,6 +1,6 @@
 ## Gemini-Better-UI (Gemini 介面優化)
 
-Enhances Gemini interface, adjustable chat width, a 5-state Canvas layout toggle.
+Enhances Gemini interface, adjustable chat width, a 5-state Canvas layout toggle.  
 增強 Gemini 介面，可調整的 Chat 寬度和 Canvas Layout 切換。
 
 ---
