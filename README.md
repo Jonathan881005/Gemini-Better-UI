@@ -15,6 +15,20 @@ Enhances Gemini interface, adjustable chat width, a 5-state Canvas layout toggle
   Switch between five predefined layouts for the chat and Canvas panels.  
   **在五種 Canvas 佈局之間切換**
 
+---
+
+**Installation / 安裝方式:**
+
+1.  **Install a Userscript Manager / 安裝使用者腳本管理器** You need a userscript manager to use this script. [Tampermonkey](https://www.tampermonkey.net/) is a popular choice (available for Chrome, Firefox, Edge, Safari, etc.).  
+    您需要先安裝一個使用者腳本管理器才能使用此腳本，推薦使用 [Tampermonkey](https://www.tampermonkey.net/) (支援 Chrome, Firefox, Edge, Safari 等主流瀏覽器)。
+
+2.  **Install the Script / 安裝腳本** Choose one of the following sources to install the script:  
+    選擇以下任一來源安裝腳本：
+
+    * **Greasy Fork:** [Click here to install from Greasy Fork / 點擊此處從 Greasy Fork 安裝](https://greasyfork.org/zh-TW/scripts/535508-gemini-better-ui)
+        (Recommended for automatic updates / 推薦，可自動更新)
+
+    * **GitHub (Direct Install from .user.js):** [Click here to install directly from GitHub / 點擊此處從 GitHub 直接安裝](https://github.com/Jonathan881005/Gemini-Better-UI/raw/refs/heads/main/Gemini-Better-UI.user.js)
 
 ---
 
