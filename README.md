@@ -21,7 +21,7 @@ Enhances Gemini interface, adjustable chat width, a 5-state Canvas layout toggle
 
 1.  **Install a Userscript Manager / 安裝使用者腳本管理器**  
     You need a userscript manager to use this script. [Tampermonkey](https://www.tampermonkey.net/) is a popular choice (available for Chrome, Firefox, Edge, Safari, etc.).  
-    您需要先安裝一個使用者腳本管理器才能使用此腳本，推薦使用 [Tampermonkey](https://www.tampermonkey.net/) (支援 Chrome, Firefox, Edge, Safari 等主流瀏覽器)。
+    需要先安裝使用者腳本管理器，推薦使用 [Tampermonkey](https://www.tampermonkey.net/) (支援 Chrome, Firefox, Edge, Safari...)。
 
 3.  **Install the Script / 安裝腳本**  
     Choose one of the following sources to install the script:  
