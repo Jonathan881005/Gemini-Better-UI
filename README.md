@@ -7,19 +7,19 @@ Enhances Gemini interface with a dynamic tab title, adjustable chat width, and a
 **Key Features / 主要功能:**
 
 - **Dynamic Tab Title**
-  Automatically updates the browser tab title to the name of the current conversation.
-  **動態分頁標題**
-  自動將分頁標題更新為當前對話的名稱。
+    Automatically updates the browser tab title to the name of the current conversation.
+    **動態分頁標題**
+    自動將分頁標題更新為當前對話的名稱。
 
 - **Adjustable Chat Container Width**
-  Easily resize the main chat conversation area.
-  **可調整的聊天容器寬度**
-  方便地縮放主要聊天對話區域的寬度。
+    Easily resize the main chat conversation area.
+    **可調整的聊天容器寬度**
+    方便地縮放主要聊天對話區域的寬度。
 
 - **5-State Canvas Layout Toggle**
-  Switch between five predefined layouts for the chat and Canvas panels.
-  **五段式 Canvas 佈局切換**
-  在五種為 Chat 和 Canvas 面板預設的佈局之間進行切換。
+    Switch between five predefined layouts for the chat and Canvas panels.
+    **五段式 Canvas 佈局切換**
+    在五種為 Chat 和 Canvas 面板預設的佈局之間進行切換。
 
 ---
 
@@ -46,16 +46,16 @@ Control buttons are located at the bottom right corner of the page:
 控制按鈕位於頁面的右下角：
 
 - `-` : Decrease chat width
-  減少 Chat 寬度
+    減少 Chat 寬度
 
 - `+` : Increase chat width
-  增加 Chat 寬度
+    增加 Chat 寬度
 
 - `|<-` : Previous Canvas layout (only active when Canvas panel is visible)
-  切換到上一個 Canvas 佈局（僅 Canvas 可見時有效）
+    切換到上一個 Canvas 佈局（僅 Canvas 可見時有效）
 
 - `->|` : Next Canvas layout (only active when Canvas panel is visible)
-  切換到下一個 Canvas 佈局（僅 Canvas 可見時有效）
+    切換到下一個 Canvas 佈局（僅 Canvas 可見時有效）
 
 ---
 
