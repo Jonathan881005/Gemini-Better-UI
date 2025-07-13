@@ -1,7 +1,7 @@
 [Install from Greasy Fork](https://greasyfork.org/zh-TW/scripts/535508-gemini-better-ui)  (Recommended for automatic updates)
 [Install directly from GitHub](https://github.com/Jonathan881005/Gemini-Better-UI/raw/refs/heads/main/Gemini-Better-UI.user.js)
 
-## v1.0.4
+### v1.0.4
 - New Feature: Dynamic Tab Title
     - The browser tab title now automatically updates to the name of the currently selected conversation.
     - When no conversation is selected (e.g., on the homepage), the title reverts to the default "Gemini".
@@ -11,7 +11,7 @@
 - Internal Code Refactoring
     - Restructured the initialization process to be more resilient and event-driven, waiting for components to be ready before attaching observers and functionality.
 
-## v1.0.3
+### v1.0.3
 - Improved CSS injection method, updated button and alert styles.
     - Improved CSS Injection:
         - Replaced GM_addStyle with dynamic <style> element creation and injection into the document <head> for potentially better compatibility.
