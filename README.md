@@ -1,7 +1,7 @@
 ## Gemini-Better-UI (Gemini 介面優化)
 
-Enhances Gemini interface with a dynamic tab title, adjustable chat width, and a 5-state Canvas layout toggle.
-增強 Gemini 介面，提供動態分頁標題、可調整的 Chat 寬度和 Canvas Layout 切換。
+- Enhances Gemini interface with a dynamic tab title, adjustable chat width, and a 5-state Canvas layout toggle.
+- 增強 Gemini 介面，提供動態分頁標題、可調整的 Chat 寬度和 Canvas Layout 切換。
 
 ---
 **Key Features / 主要功能:**
