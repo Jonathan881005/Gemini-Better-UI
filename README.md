@@ -62,7 +62,7 @@ Released under the [MIT License](https://opensource.org/license/MIT).
 
 ***
 
-# Gemini-Better-UI (Gemini 介面優化)
+# Gemini-Better-UI (Gemini 介面優化) <a id="chinese-documentation"></a>
 
 增強 Gemini 介面，提供動態分頁標題、可調整的對話框寬度和 Canvas Layout 切換。
 
