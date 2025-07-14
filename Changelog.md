@@ -2,15 +2,19 @@
 [Install directly from GitHub](https://github.com/Jonathan881005/Gemini-Better-UI/raw/refs/heads/main/Gemini-Better-UI.user.js)
 
 ### v1.0.5
-- Improved Initial Title Loading: Enhanced the script to more reliably fetch the chat name on page load, even when the sidebar is initially hidden. This uses a more targeted approach to wait for the necessary elements to load.
-- Version Update: Updated script version to v1.0.5.
+- Improved Initial Title Loading: 
+    - Enhanced the script to more reliably fetch the chat name on page load, even when the sidebar is initially hidden. 
+    - This uses a more targeted approach to wait for the necessary elements to load.
+- Version Update: 
+    - Updated script version to v1.0.5.
 
 ### v1.0.4
 - New Feature: Dynamic Tab Title
     - The browser tab title now automatically updates to the name of the currently selected conversation.
-    - When no conversation is selected (e.g., on the homepage), the title reverts to the default "Gemini".
+    - When no conversation is selected (e.g., on the homepage), the title reverts to the default "Google Gemini".
 - Robust Initialization & Bug Fixes
-    - Implemented a `waitForElement` mechanism to handle Gemini's dynamic loading. This resolves timing issues where the script would fail because UI elements had not yet loaded.
+    - Implemented a `waitForElement` mechanism to handle Gemini's dynamic loading. 
+        - This resolves timing issues where the script would fail because UI elements had not yet loaded.
     - This fix makes the script significantly more reliable, ensuring that all features (layout toggle, title updates) activate correctly even on slower connections or complex page loads.
 - Internal Code Refactoring
     - Restructured the initialization process to be more resilient and event-driven, waiting for components to be ready before attaching observers and functionality.
