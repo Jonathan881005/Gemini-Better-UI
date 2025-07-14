@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Gemini-Better-UI
 // @name:zh-TW   Gemini 介面優化
-// @namespace    http://tampermonkey.net/
+// @namespace    https://github.com/Jonathan881005/Gemini-Better-UI
 // @version      1.0.5
 // @description  Dynamic tab title, adjustable chat width, and 5-state Canvas layout toggle
 // @description:zh-TW 動態分頁標題、可調式聊天容器寬度、五段式 Canvas 佈局
