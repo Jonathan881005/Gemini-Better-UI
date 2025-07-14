@@ -108,7 +108,7 @@ Released under the [MIT License](https://opensource.org/license/MIT).
 ## 支持
 
 如果覺得好用，可以給我一個 [GitHub Star](https://github.com/Jonathan881005/Gemini-Better-UI/) 讓我更快找到工作。
-
+<br>
 也可以 [請我喝杯咖啡](https://ko-fi.com/jonathanlu1005)。
 
 ---
