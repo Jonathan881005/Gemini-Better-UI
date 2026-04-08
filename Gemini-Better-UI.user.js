@@ -3,7 +3,7 @@
 // @name:zh-TW   Gemini 介面優化
 // @namespace    http://tampermonkey.net/
 // @homepageURL  https://github.com/Jonathan881005/Gemini-Better-UI
-// @version      1.0.6
+// @version      1.0.7
 // @description  Dynamic title, adjustable chat width, delete confirmation, and canvas layout toggle.
 // @description:zh-TW 動態標題、可調對話寬度、刪除確認視窗、以及Canvas佈局切換。
 // @author       JonathanLU
@@ -11,11 +11,11 @@
 // @icon         https://upload.wikimedia.org/wikipedia/commons/1/1d/Google_Gemini_icon_2025.svg
 // @run-at       document-idle
 // @license      MIT
-// @downloadURL  https://update.greasyfork.org/scripts/535508/Gemini-Better-UI%20%28Gemini%20%E4%BB%8B%E9%9D%A2%E5%84%AA%E5%8C%96%29.user.js
-// @updateURL    https://update.greasyfork.org/scripts/535508/Gemini-Better-UI%20%28Gemini%20%E4%BB%8B%E9%9D%A2%E5%84%AA%E5%8C%96%29.meta.js
+// @downloadURL https://update.greasyfork.org/scripts/535508/Gemini-Better-UI.user.js
+// @updateURL https://update.greasyfork.org/scripts/535508/Gemini-Better-UI.meta.js
 // ==/UserScript==
 
-(function() {
+(function () {
     'use strict';
 
     // --- Script Information ---
@@ -48,7 +48,7 @@
     const IMMERSIVE_PANEL_SELECTOR = CHAT_WINDOW_GRID_TARGET_SELECTOR + ' > immersive-panel';
 
     // --- Title Management Constants ---
-    const SELECTED_CHAT_ITEM_SELECTOR = 'div[data-test-id="conversation"].selected .conversation-title';
+    const SELECTED_CHAT_ITEM_SELECTOR = 'a[data-test-id="conversation"].selected .conversation-title';
     const CHAT_PAGE_REGEX = /^\/app\/[a-zA-Z0-9]+$/;
     const TITLE_POLL_MAX_ATTEMPTS = 50; // Poll for 10 seconds
     const TITLE_POLL_INTERVAL_MS = 200;
@@ -62,71 +62,33 @@
     const WIDTH_ALERT_HORIZONTAL_SHIFT = buttonWidth + buttonMargin;
 
     // --- Title Management Logic ---
-    function isChatPage() { return CHAT_PAGE_REGEX.test(location.pathname); }
-    function stopActiveTitlePoll() { if (activeTitlePollInterval) { clearInterval(activeTitlePollInterval); activeTitlePollInterval = null; } }
-    function startNavigationPoll() {
-        stopActiveTitlePoll();
-        // console.log(`${logPrefix} [Title] Navigation/Fetch mode activated. Starting persistent poll...`);
-        let pollAttempts = 0;
-        let lastKnownTitle = ''; // **CORE FIX v1.0.6**: Track the last known title.
+    function setupPersistentTitlePoller() {
+        let lastKnownTitle = '';
 
-        activeTitlePollInterval = setInterval(() => {
-            pollAttempts++;
+        setInterval(() => {
+            if (!CHAT_PAGE_REGEX.test(location.pathname)) {
+                if (document.title !== originalDocTitle) {
+                    document.title = originalDocTitle;
+                    lastKnownTitle = '';
+                }
+                return;
+            }
+
             const selectedTitleElement = document.querySelector(SELECTED_CHAT_ITEM_SELECTOR);
-
-            if (isChatPage() && selectedTitleElement) {
+            if (selectedTitleElement) {
                 const currentTitleText = selectedTitleElement.textContent.trim();
-                // **CORE FIX v1.0.6**: Only update if title is new and different from the last known one.
                 if (currentTitleText && currentTitleText !== lastKnownTitle) {
                     lastKnownTitle = currentTitleText;
-                    const newTitle = `${lastKnownTitle} - ${originalDocTitle}`;
-                    if (document.title !== newTitle) {
-                        document.title = newTitle;
-                        // console.log(`${logPrefix} [Title] Found new/updated title: "${lastKnownTitle}".`);
-                    }
+                    document.title = `${currentTitleText} - ${originalDocTitle}`;
+                }
+            } else {
+                const pendingElement = document.querySelector('div[data-test-id="pending-conversation"]');
+                if (pendingElement && lastKnownTitle !== 'Pending') {
+                    lastKnownTitle = 'Pending';
+                    document.title = `Generating... - ${originalDocTitle}`;
                 }
             }
-
-            // **CORE FIX v1.0.6**: Polling now only stops on timeout or leaving the chat page.
-            if (pollAttempts >= TITLE_POLL_MAX_ATTEMPTS || !isChatPage()) {
-                if (!isChatPage() && document.title !== originalDocTitle) {
-                    document.title = originalDocTitle;
-                    // console.log(`${logPrefix} [Title] Left chat page. Title reset.`);
-                }
-                // console.log(`${logPrefix} [Title] Poll finished.`);
-                stopActiveTitlePoll();
-            }
-        }, TITLE_POLL_INTERVAL_MS);
-    }
-    function startInitialLoadWatcher() {
-        stopActiveTitlePoll();
-        // console.log(`${logPrefix} [Title] Initial watch mode activated. Waiting for a chat page...`);
-        activeTitlePollInterval = setInterval(() => {
-            if (isChatPage()) {
-                // console.log(`${logPrefix} [Title] Chat page detected! Switching to fetch mode.`);
-                startNavigationPoll();
-            }
-        }, 500);
-    }
-    function setupHistoryHookForTitle() {
-        // console.log(`${logPrefix} [Title] Setting up history hooks.`);
-        const originalPushState = history.pushState;
-        const originalReplaceState = history.replaceState;
-        const navigationEventHandler = (origin) => {
-            // console.log(`${logPrefix} [Title] Navigation event detected from: ${origin}.`);
-            startNavigationPoll();
-        };
-        history.pushState = function(...args) {
-            const result = originalPushState.apply(this, args);
-            navigationEventHandler('pushState');
-            return result;
-        };
-        history.replaceState = function(...args) {
-            const result = originalReplaceState.apply(this, args);
-            navigationEventHandler('replaceState');
-            return result;
-        };
-        window.addEventListener('popstate', () => navigationEventHandler('popstate'));
+        }, 1000);
     }
 
     // --- Delete Confirmation Logic (Computed Style Restoration Method) ---
@@ -134,31 +96,33 @@
         document.body.addEventListener('mousedown', (event) => {
             const optionsButton = event.target.closest('button[data-test-id="actions-menu-button"]');
             if (optionsButton) {
-                const actionsContainer = optionsButton.parentElement;
-                if (actionsContainer && actionsContainer.previousElementSibling) {
-                    const chatItemContainer = actionsContainer.previousElementSibling;
-                    const titleElement = chatItemContainer.querySelector('.conversation-title');
-                    if (titleElement && titleElement.firstChild) {
-                        chatTitleToDelete = titleElement.firstChild.textContent.trim();
-                        // console.log(`${logPrefix} [Delete] Captured title to delete: "${chatTitleToDelete}"`);
+                const ariaLabel = optionsButton.getAttribute('aria-label');
+                if (ariaLabel) {
+                    const match = ariaLabel.match(/More options for (.*)|「(.*?)」的更多動作選項/i);
+                    const matchedTitle = match ? (match[1] || match[2]) : null;
+                    if (matchedTitle) {
+                        chatTitleToDelete = matchedTitle.trim();
                     }
                 }
             }
         }, true);
-        // console.log(`${logPrefix} [Delete] Confirmation capture listener attached.`);
     }
+
     function setupDeleteDialogObserver() {
         const observer = new MutationObserver(() => {
             if (!chatTitleToDelete) return;
             const dialogTitleElement = document.querySelector('h1[data-test-id="message-dialog-title"]');
-            if (dialogTitleElement && dialogTitleElement.textContent.includes('要刪除對話記錄嗎？') && !dialogTitleElement.dataset.modified) {
-                const originalColor = window.getComputedStyle(dialogTitleElement).color;
-                const newTitle = `要刪除 "${chatTitleToDelete}" 這個對話記錄嗎?`;
-                dialogTitleElement.textContent = newTitle;
-                dialogTitleElement.style.color = originalColor;
-                dialogTitleElement.dataset.modified = 'true';
-                // console.log(`${logPrefix} [Delete] Dialog title modified and color restored.`);
-                chatTitleToDelete = null;
+            if (dialogTitleElement && !dialogTitleElement.dataset.modified) {
+                const text = dialogTitleElement.textContent;
+                if (text.includes('要刪除對話記錄嗎？') || text.includes('Delete chat?')) {
+                    const originalColor = window.getComputedStyle(dialogTitleElement).color;
+                    const newTitle = text.includes('Delete chat') ? `Delete chat "${chatTitleToDelete}"?` : `要刪除 "${chatTitleToDelete}" 這個對話記錄嗎?`;
+                    dialogTitleElement.textContent = newTitle;
+                    dialogTitleElement.style.color = originalColor;
+                    dialogTitleElement.dataset.modified = 'true';
+                    // console.log(`${logPrefix} [Delete] Dialog title modified and color restored.`);
+                    chatTitleToDelete = null;
+                }
             }
         });
         observer.observe(document.body, { childList: true, subtree: true });
@@ -280,6 +244,24 @@
             ${STABLE_CHAT_ROOT_SELECTOR} .conversation-container ${MODEL_RESPONSE_OUTER_SELECTOR} > div:first-child .response-container-content {
                 width: 100% !important; box-sizing: border-box !important; margin: 0 !important; padding: 0 !important;
             }
+
+            /* Unlock table max-width restriction */
+            /* 1. Remove the 1024px limit for the parent .markdown-main-panel */
+            ${MODEL_RESPONSE_OUTER_SELECTOR}:has(table-block) ${MODEL_RESPONSE_MAIN_PANEL_SELECTOR} {
+                max-width: 1600px !important;
+            }
+
+            /* 2. Modify table-block > div to 1600px */
+            table-block > div {
+                max-width: 1600px !important;
+                width: 100% !important;
+            }
+
+            /* 3. Ensure the table layout can expand the container */
+            table-block table {
+                width: 100% !important;
+                min-width: fit-content !important;
+            }
         `;
 
         const uqOuter = `${STABLE_CHAT_ROOT_SELECTOR} .conversation-container ${USER_QUERY_OUTER_SELECTOR}`;
@@ -347,32 +329,29 @@
         originalDocTitle = document.title || 'Gemini';
         currentConvWidthPercentage = parseInt(localStorage.getItem(STORAGE_KEY_CONV_WIDTH), 10) || DEFAULT_CONV_WIDTH_PERCENTAGE;
         document.documentElement.style.setProperty(CSS_VAR_CONV_WIDTH, currentConvWidthPercentage + '%');
+
         const style = document.createElement('style');
         style.textContent = getCssRules(currentConvWidthPercentage);
         document.head.appendChild(style);
 
-        // Setup UI Controls
         createControlButtons();
         updateButtonTitles();
+
         waitForElement(CHAT_WINDOW_GRID_TARGET_SELECTOR, (chatWindow) => {
             try {
                 const currentLayout = window.getComputedStyle(chatWindow).gridTemplateColumns;
                 const normalized = currentLayout.replace(/\s+/g, ' ').trim();
                 const idx = GRID_LAYOUT_STATES.findIndex(s => s.replace(/\s+/g, ' ').trim() === normalized);
                 currentGridLayoutIndex = (idx !== -1) ? idx : 0;
-            } catch(e) { currentGridLayoutIndex = 0; }
+            } catch (e) {
+                currentGridLayoutIndex = 0;
+            }
             setupCanvasObserver(chatWindow);
         });
 
-        // Setup Title Logic
-        setupHistoryHookForTitle();
-        if (isChatPage()) {
-            startNavigationPoll();
-        } else {
-            startInitialLoadWatcher();
-        }
+        // Enable persistent polling to monitor title changes
+        setupPersistentTitlePoller();
 
-        // Setup Delete Confirmation Feature
         setupDeleteConfirmationListener();
         setupDeleteDialogObserver();
     }
