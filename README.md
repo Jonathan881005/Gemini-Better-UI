@@ -1,7 +1,7 @@
 [中文說明](#chinese-documentation)
 
 # Gemini-Better-UI (Gemini Interface Optimization)
-![version badge](https://img.shields.io/greasyfork/v/535508?label=version&color=green)  
+[![version badge](https://img.shields.io/greasyfork/v/535508?label=version&color=green)](https://greasyfork.org/zh-TW/scripts/535508-gemini-better-ui)  
 Enhances Gemini interface with a **Dynamic Tab Title**, Adjustable Chat Width, an Enhanced Delete Confirmation, a 5-state Canvas Layout Toggle, and a Classic Conversation Bubble Toggle.
 
 ---
@@ -71,7 +71,7 @@ Released under the [MIT License](https://opensource.org/license/MIT).
 <br><br>
 
 # Gemini-Better-UI (Gemini 介面優化) <a id="chinese-documentation"></a>
-![version badge](https://img.shields.io/greasyfork/v/535508?label=version&color=green)
+[![version badge](https://img.shields.io/greasyfork/v/535508?label=version&color=green)](https://greasyfork.org/zh-TW/scripts/535508-gemini-better-ui)
 ---
 增強 Gemini 介面，提供動態分頁標題、可調整的對話框寬度、強化的刪除確認視窗、Canvas Layout 切換、以及經典對話泡泡背景還原。
 
