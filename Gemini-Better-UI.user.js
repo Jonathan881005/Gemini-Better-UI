@@ -1,11 +1,13 @@
 // ==UserScript==
 // @name         Gemini-Better-UI
 // @name:zh-TW   Gemini 介面優化
+// @name:zh-CN   Gemini 介面优化
 // @namespace    http://tampermonkey.net/
 // @homepageURL  https://github.com/Jonathan881005/Gemini-Better-UI
 // @version      1.0.7
 // @description  Dynamic title, adjustable chat width, delete confirmation, and canvas layout toggle.
 // @description:zh-TW 動態標題、可調對話寬度、刪除確認視窗、以及Canvas佈局切換。
+// @description:zh-CN 动态标题、可调对话宽度、删除确认视窗、以及Canvas布局切换。
 // @author       JonathanLU
 // @match        *://gemini.google.com/*
 // @icon         https://upload.wikimedia.org/wikipedia/commons/1/1d/Google_Gemini_icon_2025.svg
@@ -20,7 +22,7 @@
 
     // --- Script Information ---
     const SCRIPT_NAME = 'Gemini Better UI';
-    const SCRIPT_VERSION = 'v1.0.6';
+    const SCRIPT_VERSION = 'v1.0.7';
     const logPrefix = `[${SCRIPT_NAME}]`;
     // console.log(`${logPrefix} ${SCRIPT_VERSION}: Script started.`);
 
