@@ -1,13 +1,13 @@
 // ==UserScript==
 // @name         Gemini-Better-UI
-// @name:zh-TW   Gemini 介面優化
 // @name:zh-CN   Gemini 介面优化
+// @name:zh-TW   Gemini 介面優化
 // @namespace    http://tampermonkey.net/
 // @homepageURL  https://github.com/Jonathan881005/Gemini-Better-UI
-// @version      1.0.7
-// @description  Dynamic title, adjustable chat width, delete confirmation, and canvas layout toggle.
-// @description:zh-TW 動態標題、可調對話寬度、刪除確認視窗、以及Canvas佈局切換。
-// @description:zh-CN 动态标题、可调对话宽度、删除确认视窗、以及Canvas布局切换。
+// @version      1.0.8
+// @description  Dynamic title, adjustable chat width, delete confirmation, canvas layout toggle, and classic bubble restoration.
+// @description:zh-CN 动态标题、可调对话宽度、删除确认视窗、Canvas布局切换、以及恢复经典对话泡泡。
+// @description:zh-TW 動態標題、可調對話寬度、刪除確認視窗、Canvas佈局切換、以及恢復經典對話泡泡。
 // @author       JonathanLU
 // @match        *://gemini.google.com/*
 // @icon         https://upload.wikimedia.org/wikipedia/commons/1/1d/Google_Gemini_icon_2025.svg
@@ -22,12 +22,14 @@
 
     // --- Script Information ---
     const SCRIPT_NAME = 'Gemini Better UI';
-    const SCRIPT_VERSION = 'v1.0.7';
+    const SCRIPT_VERSION = 'v1.0.8';
     const logPrefix = `[${SCRIPT_NAME}]`;
     // console.log(`${logPrefix} ${SCRIPT_VERSION}: Script started.`);
 
     // --- Constants ---
     const STORAGE_KEY_CONV_WIDTH = 'geminiConversationContainerWidth';
+    const STORAGE_KEY_BUBBLE_ENABLED = 'geminiClassicBubbleEnabled';
+    const BUTTON_TOGGLE_BUBBLE_ID = 'gm-toggle-bubble-btn';
     const CSS_VAR_CONV_WIDTH = '--conversation-container-dynamic-width';
     const DEFAULT_CONV_WIDTH_PERCENTAGE = 90;
     const MIN_CONV_WIDTH_PERCENTAGE = 50;
@@ -46,8 +48,8 @@
     const MODEL_RESPONSE_MAIN_PANEL_SELECTOR = `.markdown.markdown-main-panel`;
     const USER_QUERY_TEXT_DIV_SELECTOR = `div.query-text`;
     const MODEL_RESPONSE_OUTER_SELECTOR = `model-response`;
-    const CHAT_WINDOW_GRID_TARGET_SELECTOR = '#app-root > main > side-navigation-v2 > bard-sidenav-container > bard-sidenav-content > div.content-wrapper > div > div.content-container > chat-window';
-    const IMMERSIVE_PANEL_SELECTOR = CHAT_WINDOW_GRID_TARGET_SELECTOR + ' > immersive-panel';
+    const CHAT_WINDOW_GRID_TARGET_SELECTOR = 'chat-window';
+    const IMMERSIVE_PANEL_SELECTOR = 'chat-window immersive-panel';
 
     // --- Title Management Constants ---
     const SELECTED_CHAT_ITEM_SELECTOR = 'a[data-test-id="conversation"].selected .conversation-title';
@@ -57,11 +59,92 @@
 
     // --- Globals ---
     const GRID_LAYOUT_STATES = ["minmax(360px, 1fr) minmax(0px, 2fr)", "minmax(360px, 2fr) minmax(0px, 3fr)", "1fr 1fr", "minmax(0px, 3fr) minmax(360px, 2fr)", "minmax(0px, 2fr) minmax(360px, 1fr)"];
-    let currentGridLayoutIndex = 0, prevLayoutButtonElement = null, nextLayoutButtonElement = null, decreaseConvWidthButtonElement = null, increaseConvWidthButtonElement = null, canvasObserver = null, currentConvWidthPercentage = DEFAULT_CONV_WIDTH_PERCENTAGE;
+    let currentGridLayoutIndex = 0, prevLayoutButtonElement = null, nextLayoutButtonElement = null, decreaseConvWidthButtonElement = null, increaseConvWidthButtonElement = null, toggleBubbleButtonElement = null, canvasObserver = null, currentConvWidthPercentage = DEFAULT_CONV_WIDTH_PERCENTAGE;
     let originalDocTitle = 'Gemini', activeTitlePollInterval = null, chatTitleToDelete = null;
+    let bubbleEnabled = true, bubbleStyleEl = null;
     const buttonWidth = 28, buttonMargin = 4;
-    const LAYOUT_ALERT_HORIZONTAL_SHIFT = -buttonWidth - buttonMargin;
-    const WIDTH_ALERT_HORIZONTAL_SHIFT = buttonWidth + buttonMargin;
+    
+    const CLASSIC_BUBBLE_CSS = `
+        /* Base styles (radius, code-block display) */
+        .markdown.markdown-main-panel {
+            border-radius: 12px !important;
+        }
+        .markdown.markdown-main-panel formatted-code-block,
+        .markdown.markdown-main-panel g-code-block {
+            display: block !important;
+        }
+
+        /* 淺色模式：圓潤區塊（外框純陰影） */
+        .light-theme .markdown.markdown-main-panel {
+            background-color: #f4f2f2 !important;
+            box-shadow: 0 2px 2px rgba(0,0,0,0.08) !important;
+        }
+        .light-theme .user-query-bubble-with-background {
+            background-color: #f2f0f0 !important;
+            --gemini-sys-color-surface-container-high: #f2f0f0 !important;
+            --md-sys-color-surface-container-high: #f2f0f0 !important;
+        }
+        /* 修復右下角展開按鈕的拖影/漸層 */
+        .light-theme .user-query-bubble-with-background [class*="gradient"],
+        .light-theme .user-query-bubble-with-background [class*="fade"] {
+            background: linear-gradient(to right, transparent, #f2f0f0 80%) !important;
+        }
+
+        /* 深色模式：圓潤區塊（外框純陰影） */
+        .dark-theme .markdown.markdown-main-panel {
+            background-color: #1b1c1d !important;
+            box-shadow: 0 1px 1px rgba(1,1,1,0.95) !important;
+        }
+        .dark-theme .user-query-bubble-with-background {
+            background-color: #232425 !important;
+            --gemini-sys-color-surface-container-high: #232425 !important;
+            --md-sys-color-surface-container-high: #232425 !important;
+        }
+        /* 修復右下角展開按鈕的黑色拖影/漸層 */
+        .dark-theme .user-query-bubble-with-background [class*="gradient"],
+        .dark-theme .user-query-bubble-with-background [class*="fade"] {
+            background: linear-gradient(to right, transparent, #232425 80%) !important;
+        }
+
+        /* 修正編輯模式 (Edit Mode) 輸入框過窄及右側溢出問題 */
+        /* 移除最大寬度限制，讓對話氣泡能隨內部表單向左延伸展開 */
+        .user-query-container.edit-mode,
+        .query-content.edit-mode,
+        .query-content.edit-mode .edit-container {
+            max-width: 100% !important;
+            /* 移除原本的 width: 100% !important 避免破壞 Flex 靠右對齊 */
+        }
+
+        /* 設定編輯表單的寬度，由內部撐開氣泡 */
+        .query-content.edit-mode mat-form-field.edit-form {
+            min-width: 800px !important;
+            max-width: 100% !important;
+        }
+
+        /* 讓輸入框內部元件跟隨表單寬度滿版 */
+        .query-content.edit-mode .mat-mdc-text-field-wrapper {
+            width: 100% !important;
+        }
+    `;
+
+    function applyBubbleCSS() {
+        if (bubbleEnabled) {
+            if (!bubbleStyleEl) {
+                bubbleStyleEl = document.createElement('style');
+                bubbleStyleEl.id = 'gcui-bubble-style';
+                bubbleStyleEl.appendChild(document.createTextNode(CLASSIC_BUBBLE_CSS));
+                document.head.appendChild(bubbleStyleEl);
+            }
+        } else {
+            if (bubbleStyleEl) {
+                bubbleStyleEl.remove();
+                bubbleStyleEl = null;
+            }
+        }
+    }
+    const BUBBLE_ALERT_HORIZONTAL_SHIFT = -64;
+    const LAYOUT_ALERT_HORIZONTAL_SHIFT = -16;
+    const WIDTH_ALERT_HORIZONTAL_SHIFT = 48;
 
     // --- Title Management Logic ---
     function setupPersistentTitlePoller() {
@@ -181,7 +264,11 @@
             .gm-conv-width-control-button[disabled] {
                 opacity: 0.4 !important; cursor: not-allowed !important; background-color: #3c4043 !important;
             }
-            #${GRID_LAYOUT_PREV_ID} { margin-left: 0px !important; font-size: 12px !important;}
+            .gm-conv-width-control-button.gm-toggle-off {
+                opacity: 0.4 !important;
+            }
+            #${BUTTON_TOGGLE_BUBBLE_ID} { margin-left: 0px !important; font-size: 14px !important; }
+            #${GRID_LAYOUT_PREV_ID} { margin-left: ${buttonMargin}px !important; font-size: 12px !important;}
             #${GRID_LAYOUT_NEXT_ID} { margin-left: ${buttonMargin}px !important; font-size: 12px !important; }
             #${BUTTON_DECREASE_ID} { margin-left: ${buttonMargin}px !important; }
             #${BUTTON_INCREASE_ID} { margin-left: ${buttonMargin}px !important; }
@@ -307,12 +394,12 @@
         `;
         return css;
     }
-    function updateButtonTitles() { if (prevLayoutButtonElement) prevLayoutButtonElement.title = `Prev Canvas Layout / 上個 Canvas 佈局 (${currentGridLayoutIndex + 1}/${GRID_LAYOUT_STATES.length})`; if (nextLayoutButtonElement) nextLayoutButtonElement.title = `Next Layout / 下個 Canvas 佈局 (${currentGridLayoutIndex + 1}/${GRID_LAYOUT_STATES.length})`; if (decreaseConvWidthButtonElement) decreaseConvWidthButtonElement.title = `Width - / 寬度 - (${currentConvWidthPercentage}%)`; if (increaseConvWidthButtonElement) increaseConvWidthButtonElement.title = `Width + / 寬度 + (${currentConvWidthPercentage}%)`; }
+    function updateButtonTitles() { if (prevLayoutButtonElement) prevLayoutButtonElement.title = `Prev Canvas Layout / 上個 Canvas 佈局 (${currentGridLayoutIndex + 1}/${GRID_LAYOUT_STATES.length})`; if (nextLayoutButtonElement) nextLayoutButtonElement.title = `Next Layout / 下個 Canvas 佈局 (${currentGridLayoutIndex + 1}/${GRID_LAYOUT_STATES.length})`; if (decreaseConvWidthButtonElement) decreaseConvWidthButtonElement.title = `Width - / 寬度 - (${currentConvWidthPercentage}%)`; if (increaseConvWidthButtonElement) increaseConvWidthButtonElement.title = `Width + / 寬度 + (${currentConvWidthPercentage}%)`; if (toggleBubbleButtonElement) toggleBubbleButtonElement.title = `Toggle Bubble / 切換氣泡背景 (${bubbleEnabled ? 'On' : 'Off'})`; }
     function showDynamicTemporaryAlert(text, alertTypeClass, horizontalShift) { const uiContainer = document.getElementById(BUTTON_UI_CONTAINER_ID); if (!uiContainer) return; const alertElement = document.createElement('div'); alertElement.classList.add('gm-temp-alert', alertTypeClass); alertElement.textContent = text; alertElement.style.transform = `translateX(calc(-50% + ${horizontalShift}px)) translateY(5px)`; uiContainer.appendChild(alertElement); requestAnimationFrame(() => { alertElement.style.opacity = (alertTypeClass === 'gm-alert-nope' || alertTypeClass === 'gm-alert-limit') ? '0.7' : '0.8'; alertElement.style.transform = `translateX(calc(-50% + ${horizontalShift}px)) translateY(-10px)`; }); const visibleDuration = (alertTypeClass === 'gm-alert-display') ? 350 : 250; setTimeout(() => { alertElement.style.opacity = '0'; alertElement.style.transform = `translateX(calc(-50% + ${horizontalShift}px)) translateY(-25px)`; setTimeout(() => { if (alertElement.parentNode) alertElement.parentNode.removeChild(alertElement); }, 150); }, visibleDuration); }
     function updateLayoutButtonStates() { const immersivePanel = document.querySelector(IMMERSIVE_PANEL_SELECTOR); const canvasIsVisible = immersivePanel && window.getComputedStyle(immersivePanel).display !== 'none'; if (prevLayoutButtonElement) prevLayoutButtonElement.disabled = !canvasIsVisible || (currentGridLayoutIndex === 0); if (nextLayoutButtonElement) nextLayoutButtonElement.disabled = !canvasIsVisible || (currentGridLayoutIndex === GRID_LAYOUT_STATES.length - 1); updateButtonTitles(); }
     function applyGridLayout(newIndex) { currentGridLayoutIndex = newIndex; const chatWindow = document.querySelector(CHAT_WINDOW_GRID_TARGET_SELECTOR); if (chatWindow) { chatWindow.style.setProperty('grid-template-columns', GRID_LAYOUT_STATES[currentGridLayoutIndex], 'important'); const immersivePanelElement = document.querySelector(IMMERSIVE_PANEL_SELECTOR); if (immersivePanelElement && window.getComputedStyle(immersivePanelElement).display === 'none' && currentGridLayoutIndex !== 0) { immersivePanelElement.style.setProperty('display', 'block', 'important'); } } updateLayoutButtonStates(); showDynamicTemporaryAlert(`(${currentGridLayoutIndex + 1}/${GRID_LAYOUT_STATES.length})`, 'gm-alert-display', LAYOUT_ALERT_HORIZONTAL_SHIFT); }
     function updateConversationContainerWidth(newPercentage, fromButton = true) { const oldPercentage = currentConvWidthPercentage; const clampedPercentage = Math.max(MIN_CONV_WIDTH_PERCENTAGE, Math.min(MAX_CONV_WIDTH_PERCENTAGE, newPercentage)); if (fromButton) { if (newPercentage < MIN_CONV_WIDTH_PERCENTAGE && oldPercentage === MIN_CONV_WIDTH_PERCENTAGE) { showDynamicTemporaryAlert("Min!", 'gm-alert-limit', WIDTH_ALERT_HORIZONTAL_SHIFT); return; } if (newPercentage > MAX_CONV_WIDTH_PERCENTAGE && oldPercentage === MAX_CONV_WIDTH_PERCENTAGE) { showDynamicTemporaryAlert("Max!", 'gm-alert-limit', WIDTH_ALERT_HORIZONTAL_SHIFT); return; } } currentConvWidthPercentage = clampedPercentage; document.documentElement.style.setProperty(CSS_VAR_CONV_WIDTH, currentConvWidthPercentage + '%'); localStorage.setItem(STORAGE_KEY_CONV_WIDTH, currentConvWidthPercentage); if (fromButton) showDynamicTemporaryAlert(`${currentConvWidthPercentage}%`, 'gm-alert-display', WIDTH_ALERT_HORIZONTAL_SHIFT); updateButtonTitles(); }
-    function createControlButtons() { if (document.getElementById(BUTTON_UI_CONTAINER_ID)) return; const uiContainer = document.createElement('div'); uiContainer.id = BUTTON_UI_CONTAINER_ID; const buttonRow = document.createElement('div'); buttonRow.classList.add(BUTTON_ROW_CLASS); prevLayoutButtonElement = document.createElement('button'); prevLayoutButtonElement.id = GRID_LAYOUT_PREV_ID; prevLayoutButtonElement.textContent = '|<'; prevLayoutButtonElement.classList.add('gm-conv-width-control-button'); prevLayoutButtonElement.addEventListener('click', () => { const immersivePanel = document.querySelector(IMMERSIVE_PANEL_SELECTOR); if (!immersivePanel || window.getComputedStyle(immersivePanel).display === 'none') { showDynamicTemporaryAlert("Nope!", 'gm-alert-nope', LAYOUT_ALERT_HORIZONTAL_SHIFT); return; } if (currentGridLayoutIndex > 0) applyGridLayout(currentGridLayoutIndex - 1); else updateLayoutButtonStates(); }); nextLayoutButtonElement = document.createElement('button'); nextLayoutButtonElement.id = GRID_LAYOUT_NEXT_ID; nextLayoutButtonElement.textContent = '>|'; nextLayoutButtonElement.classList.add('gm-conv-width-control-button'); nextLayoutButtonElement.addEventListener('click', () => { const immersivePanel = document.querySelector(IMMERSIVE_PANEL_SELECTOR); if (!immersivePanel || window.getComputedStyle(immersivePanel).display === 'none') { showDynamicTemporaryAlert("Nope!", 'gm-alert-nope', LAYOUT_ALERT_HORIZONTAL_SHIFT); return; } if (currentGridLayoutIndex < GRID_LAYOUT_STATES.length - 1) applyGridLayout(currentGridLayoutIndex + 1); else updateLayoutButtonStates(); }); decreaseConvWidthButtonElement = document.createElement('button'); decreaseConvWidthButtonElement.id = BUTTON_DECREASE_ID; decreaseConvWidthButtonElement.textContent = '-'; decreaseConvWidthButtonElement.classList.add('gm-conv-width-control-button'); decreaseConvWidthButtonElement.addEventListener('click', () => updateConversationContainerWidth(currentConvWidthPercentage - STEP_CONV_WIDTH_PERCENTAGE, true)); increaseConvWidthButtonElement = document.createElement('button'); increaseConvWidthButtonElement.id = BUTTON_INCREASE_ID; increaseConvWidthButtonElement.textContent = '+'; increaseConvWidthButtonElement.classList.add('gm-conv-width-control-button'); increaseConvWidthButtonElement.addEventListener('click', () => updateConversationContainerWidth(currentConvWidthPercentage + STEP_CONV_WIDTH_PERCENTAGE, true)); buttonRow.appendChild(prevLayoutButtonElement); buttonRow.appendChild(nextLayoutButtonElement); buttonRow.appendChild(decreaseConvWidthButtonElement); buttonRow.appendChild(increaseConvWidthButtonElement); uiContainer.appendChild(buttonRow); document.body.appendChild(uiContainer); }
+    function createControlButtons() { if (document.getElementById(BUTTON_UI_CONTAINER_ID)) return; const uiContainer = document.createElement('div'); uiContainer.id = BUTTON_UI_CONTAINER_ID; const buttonRow = document.createElement('div'); buttonRow.classList.add(BUTTON_ROW_CLASS); toggleBubbleButtonElement = document.createElement('button'); toggleBubbleButtonElement.id = BUTTON_TOGGLE_BUBBLE_ID; toggleBubbleButtonElement.textContent = '🗨️'; toggleBubbleButtonElement.classList.add('gm-conv-width-control-button'); toggleBubbleButtonElement.classList.toggle('gm-toggle-off', !bubbleEnabled); toggleBubbleButtonElement.addEventListener('click', () => { bubbleEnabled = !bubbleEnabled; localStorage.setItem(STORAGE_KEY_BUBBLE_ENABLED, bubbleEnabled); applyBubbleCSS(); toggleBubbleButtonElement.classList.toggle('gm-toggle-off', !bubbleEnabled); updateButtonTitles(); showDynamicTemporaryAlert(bubbleEnabled ? 'Bubble On' : 'Bubble Off', 'gm-alert-display', BUBBLE_ALERT_HORIZONTAL_SHIFT); }); prevLayoutButtonElement = document.createElement('button'); prevLayoutButtonElement.id = GRID_LAYOUT_PREV_ID; prevLayoutButtonElement.textContent = '|<'; prevLayoutButtonElement.classList.add('gm-conv-width-control-button'); prevLayoutButtonElement.addEventListener('click', () => { const immersivePanel = document.querySelector(IMMERSIVE_PANEL_SELECTOR); if (!immersivePanel || window.getComputedStyle(immersivePanel).display === 'none') { showDynamicTemporaryAlert("Nope!", 'gm-alert-nope', LAYOUT_ALERT_HORIZONTAL_SHIFT); return; } if (currentGridLayoutIndex > 0) applyGridLayout(currentGridLayoutIndex - 1); else updateLayoutButtonStates(); }); nextLayoutButtonElement = document.createElement('button'); nextLayoutButtonElement.id = GRID_LAYOUT_NEXT_ID; nextLayoutButtonElement.textContent = '>|'; nextLayoutButtonElement.classList.add('gm-conv-width-control-button'); nextLayoutButtonElement.addEventListener('click', () => { const immersivePanel = document.querySelector(IMMERSIVE_PANEL_SELECTOR); if (!immersivePanel || window.getComputedStyle(immersivePanel).display === 'none') { showDynamicTemporaryAlert("Nope!", 'gm-alert-nope', LAYOUT_ALERT_HORIZONTAL_SHIFT); return; } if (currentGridLayoutIndex < GRID_LAYOUT_STATES.length - 1) applyGridLayout(currentGridLayoutIndex + 1); else updateLayoutButtonStates(); }); decreaseConvWidthButtonElement = document.createElement('button'); decreaseConvWidthButtonElement.id = BUTTON_DECREASE_ID; decreaseConvWidthButtonElement.textContent = '-'; decreaseConvWidthButtonElement.classList.add('gm-conv-width-control-button'); decreaseConvWidthButtonElement.addEventListener('click', () => updateConversationContainerWidth(currentConvWidthPercentage - STEP_CONV_WIDTH_PERCENTAGE, true)); increaseConvWidthButtonElement = document.createElement('button'); increaseConvWidthButtonElement.id = BUTTON_INCREASE_ID; increaseConvWidthButtonElement.textContent = '+'; increaseConvWidthButtonElement.classList.add('gm-conv-width-control-button'); increaseConvWidthButtonElement.addEventListener('click', () => updateConversationContainerWidth(currentConvWidthPercentage + STEP_CONV_WIDTH_PERCENTAGE, true)); buttonRow.appendChild(toggleBubbleButtonElement); buttonRow.appendChild(prevLayoutButtonElement); buttonRow.appendChild(nextLayoutButtonElement); buttonRow.appendChild(decreaseConvWidthButtonElement); buttonRow.appendChild(increaseConvWidthButtonElement); uiContainer.appendChild(buttonRow); document.body.appendChild(uiContainer); }
     function setupCanvasObserver(chatWindowElement) { if (canvasObserver) canvasObserver.disconnect(); canvasObserver = new MutationObserver(updateLayoutButtonStates); canvasObserver.observe(chatWindowElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] }); updateLayoutButtonStates(); }
     function waitForElement(selector, callback, timeout = 20000) {
         const pollInterval = 200; let elapsedTime = 0;
@@ -331,6 +418,10 @@
         originalDocTitle = document.title || 'Gemini';
         currentConvWidthPercentage = parseInt(localStorage.getItem(STORAGE_KEY_CONV_WIDTH), 10) || DEFAULT_CONV_WIDTH_PERCENTAGE;
         document.documentElement.style.setProperty(CSS_VAR_CONV_WIDTH, currentConvWidthPercentage + '%');
+
+        const savedBubbleEnabled = localStorage.getItem(STORAGE_KEY_BUBBLE_ENABLED);
+        bubbleEnabled = savedBubbleEnabled !== null ? savedBubbleEnabled === 'true' : true;
+        applyBubbleCSS();
 
         const style = document.createElement('style');
         style.textContent = getCssRules(currentConvWidthPercentage);

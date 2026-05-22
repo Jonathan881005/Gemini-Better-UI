@@ -1,6 +1,13 @@
 [Install from Greasy Fork](https://greasyfork.org/zh-TW/scripts/535508-gemini-better-ui)  (Recommended for automatic updates)
 [Install directly from GitHub](https://github.com/Jonathan881005/Gemini-Better-UI/raw/refs/heads/main/Gemini-Better-UI.user.js)
 
+### v1.0.8
+- **New Feature: Classic Conversation Bubble Toggle**
+    - Integrated the Classic UI logic, allowing users to toggle the background of conversation bubbles on and off.
+    - Added a new toggle button (`🗨️`) to the control panel, complete with dynamic state dimming.
+- **Bug Fixes & Improvements**
+    - Fixed an issue where the Canvas (immersive panel) layout buttons would fail to appear due to recent structural changes in Gemini's DOM. Simplified the CSS selector for robustness.
+
 ### v1.0.7
 - **Bug Fixes & Improvements**
     -   Fixed an issue where the chat name was not captured correctly for the browser tab title.

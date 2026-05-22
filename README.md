@@ -2,7 +2,7 @@
 
 # Gemini-Better-UI (Gemini Interface Optimization)
 ![version badge](https://img.shields.io/greasyfork/v/535508?label=version&color=green)  
-Enhances Gemini interface with a **Dynamic Tab Title**, Adjustable Chat Width, an Enhanced Delete Confirmation, and a 5-state Canvas Layout Toggle.
+Enhances Gemini interface with a **Dynamic Tab Title**, Adjustable Chat Width, an Enhanced Delete Confirmation, a 5-state Canvas Layout Toggle, and a Classic Conversation Bubble Toggle.
 
 ---
 
@@ -16,6 +16,8 @@ Enhances Gemini interface with a **Dynamic Tab Title**, Adjustable Chat Width, a
     -   Easily resize the main chat conversation area.
 * **5-State Canvas Layout Toggle**
     -   Switch between five predefined layouts for the chat and Canvas panels.
+* **Classic Conversation Bubble Toggle**
+    -   Restore the old chat bubble background with a simple click.
 
 ---
 
@@ -44,6 +46,7 @@ Enhances Gemini interface with a **Dynamic Tab Title**, Adjustable Chat Width, a
 
 Control buttons are located at the bottom right corner of the page:
 
+* `🗨️` : Toggle classic chat bubble background
 * `-` : Decrease chat width
 * `+` : Increase chat width
 * `|<` : Previous Canvas layout (only active when Canvas panel is visible)
@@ -70,7 +73,7 @@ Released under the [MIT License](https://opensource.org/license/MIT).
 # Gemini-Better-UI (Gemini 介面優化) <a id="chinese-documentation"></a>
 ![version badge](https://img.shields.io/greasyfork/v/535508?label=version&color=green)
 ---
-增強 Gemini 介面，提供動態分頁標題、可調整的對話框寬度、強化的刪除確認視窗、以及 Canvas Layout 切換。
+增強 Gemini 介面，提供動態分頁標題、可調整的對話框寬度、強化的刪除確認視窗、Canvas Layout 切換、以及經典對話泡泡背景還原。
 
 ---
 
@@ -84,6 +87,8 @@ Released under the [MIT License](https://opensource.org/license/MIT).
     -   方便地縮放主要聊天對話區域的寬度。
 * **五段式 Canvas 佈局切換**
     -   在五種為 對話框 和 Canvas 面板預設的佈局之間進行切換。
+* **經典對話泡泡開關**
+    -   一鍵還原或關閉舊版的對話泡泡背景。
 
 ---
 
@@ -108,6 +113,7 @@ Released under the [MIT License](https://opensource.org/license/MIT).
 
 控制按鈕位於頁面的右下角：
 
+* `🗨️` : 開關經典對話泡泡背景
 * `-` : 減少 Chat 寬度
 * `+` : 增加 Chat 寬度
 * `|<` : 切換到上一個 Canvas 佈局（僅 Canvas 可見時有效）
